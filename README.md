@@ -1,10 +1,9 @@
 # Mir ChatApp
 
-Mir ChatApp is a modern chat application frontend built with React, TypeScript, Vite, and Bootstrap. It features a beautiful animated gradient background and a clean, centered login interface.
+Mir ChatApp is a modern chat application frontend built with React, TypeScript, Vite, and Bootstrap.
 
 ## Features
 
-- Animated, colorful gradient background
 - Responsive and centered login UI
 - Bootstrap-powered styling
 - React Router for navigation
@@ -42,11 +41,6 @@ Mir ChatApp is a modern chat application frontend built with React, TypeScript, 
   - `main.tsx` - Entry point
 - `public/` - Static assets
 - `index.html` - Main HTML file
-
-## Customization
-
-- To change the background animation or colors, edit `src/index.css`.
-- To update the login UI, edit `src/App.tsx`.
 
 ## License
 
