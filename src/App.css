@@ -1,7 +1,14 @@
+/* Updated background color to a solid color */
+body {
+  background-color: #f0f0f0;
+}
+
+/* Ensure solid background color for the login page */
 #root {
-  max-width: 1280px;
+  background-color: #f0f0f0;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
   text-align: center;
 }
 
@@ -11,9 +18,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -22,6 +31,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -39,4 +49,18 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Updated button background to a solid color */
+button.btn-primary {
+  background-color: orange;
+  background-image: none;
+  border: none;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(106, 130, 251, 0.15);
+  transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+button.btn-primary:hover {
+  background-color: green;
 }

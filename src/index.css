@@ -18,16 +18,25 @@ a {
   color: #646cff;
   text-decoration: inherit;
 }
+
 a:hover {
   color: #535bf2;
 }
 
-body {
+body,
+#root {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
   min-height: 100vh;
+  min-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  background-color: #f0f0f0;
 }
 
 h1 {
@@ -46,12 +55,31 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+button.btn-primary {
+  background: linear-gradient(135deg, #6a82fb, #fc5c7d, #7f53ac, #4e54c8, #43cea2);
+  background-size: 400% 400%;
+  animation: gradientMove 10s ease-in-out infinite;
+  border: none;
+  color: #111;
+  /* Set Login text color to black */
+  box-shadow: 0 4px 16px rgba(106, 130, 251, 0.15);
+  transition: box-shadow 0.3s;
+}
+
+button.btn-primary:hover,
+button.btn-primary:focus {
+  box-shadow: 0 6px 24px rgba(161, 140, 209, 0.25);
+  outline: none;
 }
 
 @media (prefers-color-scheme: light) {
@@ -59,9 +87,11 @@ button:focus-visible {
     color: #213547;
     background-color: #ffffff;
   }
+
   a:hover {
     color: #747bff;
   }
+
   button {
     background-color: #f9f9f9;
   }
