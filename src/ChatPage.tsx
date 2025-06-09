@@ -79,6 +79,16 @@ const ChatPage: React.FC = () => {
         return () => clearInterval(intervalId); // Cleanup interval on component unmount
     }, [auth]);
 
+    useEffect(() => {
+        if (!auth.isAuthenticated) {
+            const clientId = "18p14d5f31j81tmsi1mubnrjb2";
+            const redirectUri = "http://localhost:5173/callback";
+            const cognitoDomain = "https://us-west-2fxfeoegvx.auth.us-west-2.amazoncognito.com";
+
+            window.location.href = `${cognitoDomain}/login?client_id=${clientId}&response_type=code&scope=openid&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        }
+    }, [auth.isAuthenticated]);
+
     const handleUserClick = (user: User) => {
         setSelectedUser(user);
     };

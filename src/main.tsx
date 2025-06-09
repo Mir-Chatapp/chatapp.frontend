@@ -5,6 +5,7 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import './index.css'
 import App from './App.tsx'
 import ChatPage from './ChatPage'
+import CallbackPage from './CallbackPage'
 import { AuthProvider } from 'react-oidc-context'
 
 const cognitoAuthConfig = {
@@ -22,7 +23,7 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/chat" element={<ChatPage />} />
-          <Route path="/callback" element={<App />} />
+          <Route path="/callback" element={<CallbackPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
