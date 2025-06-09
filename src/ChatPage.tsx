@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from 'react-oidc-context';
+import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
 
 interface User {
     userName: string;
@@ -17,6 +18,10 @@ const ChatPage: React.FC = () => {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [messages, setMessages] = useState<Record<string, Message[]>>({});
     const [input, setInput] = useState('');
+    const [isConnected, setIsConnected] = useState(false); // Default to disconnected (red indicator)
+    const [alert, setAlert] = useState<{ type: 'warning' | 'danger'; message: string } | null>(null);
+    const [notifications, setNotifications] = useState<Record<string, boolean>>({}); // Track notifications for each user
+    const wsRef = useRef<WebSocket | null>(null); // Use useRef for WebSocket instance
 
     useEffect(() => {
         let retryCount = 0;
@@ -89,19 +94,89 @@ const ChatPage: React.FC = () => {
         }
     }, [auth.isAuthenticated]);
 
+    useEffect(() => {
+        if (wsRef.current) {
+            wsRef.current.onmessage = (event) => {
+                console.log('Message received from WebSocket:', event.data);
+                const message = JSON.parse(event.data);
+
+                if (message.from_user && message.message) {
+                    // Map from_user to userName using the users list
+                    const sender = users.find((user) => user.userId === message.from_user);
+                    const senderName = sender ? sender.userName : 'Unknown';
+
+                    setMessages((prevMessages) => {
+                        const userMessages = prevMessages[message.from_user] || [];
+                        return {
+                            ...prevMessages,
+                            [message.from_user]: [...userMessages, { from: senderName, text: message.message }],
+                        };
+                    });
+
+                    // Set notification for the user if they are not the currently selected user
+                    if (message.from_user !== selectedUser?.userId) {
+                        setNotifications((prevNotifications) => ({
+                            ...prevNotifications,
+                            [message.from_user]: true,
+                        }));
+                    }
+                }
+            };
+        }
+    }, [selectedUser]);
+
     const handleUserClick = (user: User) => {
         setSelectedUser(user);
+
+        // Clear notification for the selected user
+        setNotifications((prevNotifications) => {
+            const updatedNotifications = { ...prevNotifications };
+            delete updatedNotifications[user.userId];
+            return updatedNotifications;
+        });
     };
 
     const handleSend = () => {
-        if (!input.trim()) return;
-        setMessages((prev) => ({
-            ...prev,
-            [selectedUser?.userId || '']: [
-                ...(prev[selectedUser?.userId || ''] || []),
-                { from: 'Me', text: input },
-            ],
-        }));
+        if (!selectedUser) {
+            setAlert({ type: 'warning', message: 'No user selected. Please select a user to send a message.' });
+            return;
+        }
+
+        if (!input.trim()) {
+            setAlert({ type: 'warning', message: 'Message is empty. Please enter a message to send.' });
+            return;
+        }
+
+        if (input.length > 500) {
+            setAlert({ type: 'warning', message: 'Message exceeds the 500-character limit. Please shorten your message.' });
+            return;
+        }
+
+        const payload = {
+            customroute: "sendmessage",
+            from: auth.user?.profile.sub || "unknown",
+            to: selectedUser.userId,
+            message: input,
+        };
+
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify(payload));
+            console.log("Message sent:", payload);
+            setAlert(null); // Clear any existing alerts
+
+            // Update the messages state to include the new message
+            setMessages((prevMessages) => {
+                const userMessages = prevMessages[selectedUser.userId] || [];
+                return {
+                    ...prevMessages,
+                    [selectedUser.userId]: [...userMessages, { from: "Me", text: input }],
+                };
+            });
+        } else {
+            setAlert({ type: 'danger', message: 'WebSocket connection is not active. Please try again later.' });
+            return;
+        }
+
         setInput('');
     };
 
@@ -111,6 +186,10 @@ const ChatPage: React.FC = () => {
         const cognitoDomain = "https://us-west-2fxfeoegvx.auth.us-west-2.amazoncognito.com";
 
         try {
+            if (wsRef.current) {
+                wsRef.current.close();
+                console.log('All WebSocket connections closed during sign out.');
+            }
             await auth.removeUser();
             setSelectedUser(null);
             window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
@@ -118,6 +197,76 @@ const ChatPage: React.FC = () => {
             console.error("Error during sign out:", error);
         }
     };
+
+    const connectWebSocket = () => {
+        if (wsRef.current) {
+            console.warn('Closing existing WebSocket connection before establishing a new one.');
+            wsRef.current.close();
+        }
+
+        const accessToken = auth.user?.access_token;
+
+        if (!accessToken) {
+            console.error('Access token is missing. Cannot establish WebSocket connection.');
+            return;
+        }
+
+        console.log('Using access token for WebSocket connection:', accessToken);
+
+        const wsUrl = `wss://5vqx0cw010.execute-api.us-west-2.amazonaws.com/teststage01?token=${accessToken}`;
+        wsRef.current = new WebSocket(wsUrl);
+
+        wsRef.current.onopen = () => {
+            console.log('WebSocket connection established.');
+            setIsConnected(true); // Update connection status
+            setAlert(null); // Clear any existing alerts related to WebSocket
+        };
+
+        wsRef.current.onmessage = (event) => {
+            console.log('Message received from WebSocket:', event.data);
+        };
+
+        wsRef.current.onclose = (event) => {
+            console.error('WebSocket connection closed:', {
+                wasClean: event.wasClean,
+                code: event.code,
+                reason: event.reason,
+                event,
+            });
+            setIsConnected(false); // Update connection status
+            setAlert({ type: 'danger', message: 'WebSocket connection lost. Attempting to reconnect...' });
+        };
+
+        wsRef.current.onerror = (error) => {
+            console.error('WebSocket error occurred:', error);
+        };
+    };
+
+    useEffect(() => {
+        connectWebSocket();
+
+        return () => {
+            if (wsRef.current) {
+                wsRef.current.close();
+                console.log('WebSocket connection closed on component unmount.');
+            }
+        };
+    }, [auth.user?.access_token]);
+
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)) {
+                console.log('Tab is active. Attempting to re-establish WebSocket connection...');
+                connectWebSocket();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
 
     if (auth.isLoading) {
         return <div>Loading...</div>;
@@ -129,6 +278,11 @@ const ChatPage: React.FC = () => {
 
     return (
         <div style={{ display: 'flex', height: '80vh', width: '80vw', background: 'rgba(255,255,255,0.7)', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+            {alert && (
+                <div className={`alert alert-${alert.type}`} role="alert" style={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>
+                    {alert.message}
+                </div>
+            )}
             {/* Users List */}
             <div style={{ width: '25%', borderRight: '1px solid #eee', padding: 24, overflowY: 'auto', background: '#e67e22', borderTopLeftRadius: 16, borderBottomLeftRadius: 16, display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <h4 style={{ color: '#fff', letterSpacing: '2px', fontWeight: 700, fontSize: '1.5rem', textAlign: 'center', marginBottom: 32, textShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
@@ -137,7 +291,7 @@ const ChatPage: React.FC = () => {
                 </h4>
                 <ul style={{ listStyle: 'none', padding: 0, flex: 1 }}>
                     {users.map((user) => (
-                        <li key={user.userId}>
+                        <li key={user.userId} style={{ position: 'relative' }}>
                             <button
                                 style={{
                                     width: '100%',
@@ -153,6 +307,21 @@ const ChatPage: React.FC = () => {
                                 onClick={() => handleUserClick(user)}
                             >
                                 {user.userName}
+                                {notifications[user.userId] && (
+                                    <span
+                                        style={{
+                                            position: 'absolute',
+                                            top: '50%',
+                                            right: '10px',
+                                            transform: 'translateY(-50%)',
+                                            background: 'red',
+                                            color: 'white',
+                                            borderRadius: '50%',
+                                            width: '10px',
+                                            height: '10px',
+                                        }}
+                                    ></span>
+                                )}
                             </button>
                         </li>
                     ))}
@@ -181,7 +350,7 @@ const ChatPage: React.FC = () => {
                         </div>
                     ))}
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <input
                         className="form-control"
                         style={{ flex: 1, borderRadius: 16 }}
@@ -192,6 +361,11 @@ const ChatPage: React.FC = () => {
                         onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
                     />
                     <button className="btn px-4" style={{ background: '#ff9800', border: 'none', color: '#fff' }} onClick={handleSend}>Send</button>
+                    {isConnected ? (
+                        <div style={{ width: 16, height: 16, backgroundColor: 'green', borderRadius: '50%' }} title="Connected"></div>
+                    ) : (
+                        <div style={{ width: 16, height: 16, backgroundColor: 'red', borderRadius: '50%' }} title="Disconnected"></div>
+                    )}
                 </div>
             </div>
         </div>
