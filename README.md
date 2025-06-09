@@ -1,4 +1,4 @@
-# Mir ChatApp
+# Mir ChatApp Frontend
 
 Mir ChatApp is a modern chat application frontend built with React, TypeScript, Vite, and Bootstrap.
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from 'react-oidc-context';
 import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
+import { jwtDecode } from 'jwt-decode';
 
 interface User {
     userName: string;
@@ -22,6 +23,21 @@ const ChatPage: React.FC = () => {
     const [alert, setAlert] = useState<{ type: 'warning' | 'danger'; message: string } | null>(null);
     const [notifications, setNotifications] = useState<Record<string, boolean>>({}); // Track notifications for each user
     const wsRef = useRef<WebSocket | null>(null); // Use useRef for WebSocket instance
+
+    const getUsernameFromIdToken = () => {
+        const idToken = auth.user?.id_token;
+        if (idToken) {
+            try {
+                const decoded: any = jwtDecode(idToken);
+                return decoded["cognito:username"] || 'User';
+            } catch (error) {
+                console.error('Error decoding id_token:', error);
+            }
+        }
+        return 'User';
+    };
+
+    const username = getUsernameFromIdToken();
 
     useEffect(() => {
         let retryCount = 0;
@@ -283,6 +299,10 @@ const ChatPage: React.FC = () => {
                     {alert.message}
                 </div>
             )}
+            {/* Display Username */}
+            <div style={{ position: 'absolute', top: 16, right: 16, color: '#333', fontWeight: 600 }}>
+                Welcome, {username}!
+            </div>
             {/* Users List */}
             <div style={{ width: '25%', borderRight: '1px solid #eee', padding: 24, overflowY: 'auto', background: '#e67e22', borderTopLeftRadius: 16, borderBottomLeftRadius: 16, display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <h4 style={{ color: '#fff', letterSpacing: '2px', fontWeight: 700, fontSize: '1.5rem', textAlign: 'center', marginBottom: 32, textShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
