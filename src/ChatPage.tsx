@@ -66,7 +66,7 @@ const ChatPage: React.FC = () => {
 
                 localStorage.setItem('accessToken', accessToken); // Store token in localStorage
 
-                const response = await fetch('https://xd5491qso1.execute-api.us-west-2.amazonaws.com/dev/v1/users', {
+                const response = await fetch('https://nuqi3i3i0i.execute-api.us-west-2.amazonaws.com/dev/v1/users', {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
                     },
