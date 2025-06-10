@@ -141,7 +141,52 @@ const ChatPage: React.FC = () => {
         }
     }, [selectedUser]);
 
-    const handleUserClick = (user: User) => {
+    // Add the fetchChatHistory function
+    const fetchChatHistory = async (fromUserId: string, toUserId: string) => {
+        try {
+            const accessToken = auth.user?.access_token;
+
+            if (!accessToken) {
+                console.error('Access token is missing. Cannot fetch chat history.');
+                return;
+            }
+
+            const response = await fetch(
+                `https://nuqi3i3i0i.execute-api.us-west-2.amazonaws.com/dev/v1/chat-conversations/?from_user_id=${fromUserId}&to_user_id=${toUserId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                console.error(`Failed to fetch chat history. HTTP status: ${response.status}`);
+                return;
+            }
+
+            const data = await response.json();
+
+            if (data.chatHistory) {
+                const chatMessages = data.chatHistory.map((message: { from_user: string; to_user: string; message: string }) => ({
+                    from: message.from_user === fromUserId ? 'Me' : users.find((user) => user.userId === message.from_user)?.userName || 'Unknown',
+                    text: message.message,
+                }));
+
+                setMessages((prevMessages) => ({
+                    ...prevMessages,
+                    [toUserId]: chatMessages,
+                }));
+            } else {
+                console.error('Failed to fetch chat history:', data);
+            }
+        } catch (error) {
+            console.error('Error fetching chat history:', error);
+        }
+    };
+
+    // Update the handleUserClick function
+    const handleUserClick = async (user: User) => {
         setSelectedUser(user);
 
         // Clear notification for the selected user
@@ -150,6 +195,10 @@ const ChatPage: React.FC = () => {
             delete updatedNotifications[user.userId];
             return updatedNotifications;
         });
+
+        // Fetch chat history for the selected user
+        const fromUserId = auth.user?.profile.sub || 'unknown';
+        await fetchChatHistory(fromUserId, user.userId);
     };
 
     const handleSend = () => {
